@@ -70,14 +70,15 @@ def check_database_schema():
     while True:
         try:
             with connect_db() as con:
-                con.execute("SELECT chat_id FROM olx_bot_chats LIMIT 0")
-                con.execute("SELECT listing_url FROM olx_seen_ads LIMIT 0")
+                con.execute(
+                    "CREATE TABLE IF NOT EXISTS olx_bot_chats (chat_id BIGINT PRIMARY KEY)"
+                )
+                con.execute(
+                    "CREATE TABLE IF NOT EXISTS olx_seen_ads (listing_url TEXT PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+                )
+                con.commit()
+            log.info("Database tables verified/created successfully.")
             return
-        except psycopg.errors.UndefinedTable as exc:
-            raise SystemExit(
-                "The OLX bot tables are not in this database yet. "
-                "Apply the development schema, then publish to apply it to production."
-            ) from exc
         except psycopg.OperationalError as exc:
             failures += 1
             delay = retry_delay(exc, failures)
@@ -87,7 +88,6 @@ def check_database_schema():
                 safe_error(exc),
             )
             time.sleep(delay)
-
 
 def telegram(method, payload=None, timeout=30):
     response = requests.post(
